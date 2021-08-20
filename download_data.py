@@ -262,6 +262,6 @@ class PixivSpider(object):
 if __name__ == "__main__":
     with open("session.txt", 'r', encoding='utf-8') as f:
         session = f.read()
-    spider = PixivSpider()
-    spider.start(session=session)
+    spider = PixivSpider(session=session)
+    spider.start()
     spider.close()
