@@ -117,8 +117,18 @@ class PixivSpider(object):
             
             self.get_user_all_artworks(now_user)
 
-            following = self.get_following(now_user, 1)
-            user_list.extend([f['id'] for f in following])
+            following_page = 1
+            all_following = []
+            while True:
+                following = self.get_following(now_user, following_page)
+                all_following.extend(following)
+                following_page += 1
+                if len(following) == 0:
+                    break
+
+            following_list = [f['id'] for f in all_following]
+            random.shuffle(following_list)
+            user_list.extend(following_list)
 
     def close(self) -> None:
         self.driver.close()
