@@ -21,7 +21,7 @@ class PixivDataset(torch.utils.data.Dataset):
             # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
 
-        self.files = list(glob.glob(os.path.join(dataset_path, "/**/*.jpg"), recursive=True))
+        self.files = list(glob.glob(os.path.join(dataset_path, "./**/*.jpg"), recursive=True))
         print(f"file number: {len(self.files)}")
 
     def tensor_to_img(self, img_tensor):

@@ -108,8 +108,10 @@ class DCGAN(pl.LightningModule):
         self.discriminator.apply(weights_init_normal)
     
     def configure_optimizers(self):
-        return torch.optim.Adam(self.generator.parameters(), lr=self.lr, betas=(self.b1, self.b2)), \
-            torch.optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
+        g_optim = torch.optim.Adam(self.generator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
+        d_optim = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
+        return [g_optim, d_optim], []
+            
 
     def forward(self, x):
         # in lightning, forward defines the prediction/inference actions
@@ -122,7 +124,6 @@ class DCGAN(pl.LightningModule):
         img = batch
         batch_size = img.shape[0]
 
-        
         # Adversarial ground truths
         valid = torch.tensor(batch_size, 1, requires_grad=False).fill_(1.0)
         fake = torch.tensor(batch_size, 1, requires_grad=False).fill_(0.0)
