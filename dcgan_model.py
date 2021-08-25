@@ -18,7 +18,7 @@ import pytorch_lightning as pl
 
 
 class Generator(nn.Module):
-    def __init__(self, img_size=32, latent_dim=100, channels=1):
+    def __init__(self, img_size=256, latent_dim=100, channels=3):
         super(Generator, self).__init__()
 
         self.img_size = img_size
@@ -50,7 +50,7 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, img_size=32, latent_dim=100, channels=1):
+    def __init__(self, img_size=256, latent_dim=100, channels=3):
         super(Discriminator, self).__init__()
 
         self.img_size = img_size
@@ -91,15 +91,16 @@ def weights_init_normal(m):
 
 
 class DCGAN(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, img_size:int=256):
         super().__init__()
+        self.img_size = img_size
         self.lr = 0.0002
         self.b1 = 0.5
         self.b2 = 0.999
         self.latent_dim = 100
         # Initialize generator and discriminator
-        self.generator = Generator()
-        self.discriminator = Discriminator()
+        self.generator = Generator(img_size=img_size)
+        self.discriminator = Discriminator(img_size=img_size)
         # Loss function
         self.adversarial_loss = torch.nn.BCELoss()
         
@@ -110,7 +111,7 @@ class DCGAN(pl.LightningModule):
     def configure_optimizers(self):
         g_optim = torch.optim.Adam(self.generator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
         d_optim = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
-        return [g_optim, d_optim], []
+        return (g_optim, d_optim)
             
 
     def forward(self, x):
@@ -125,8 +126,8 @@ class DCGAN(pl.LightningModule):
         batch_size = img.shape[0]
 
         # Adversarial ground truths
-        valid = torch.tensor(batch_size, 1, requires_grad=False).fill_(1.0)
-        fake = torch.tensor(batch_size, 1, requires_grad=False).fill_(0.0)
+        valid = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False).fill_(1.0)
+        fake = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False).fill_(0.0)
 
         # Configure input
         real_imgs = batch
@@ -137,7 +138,7 @@ class DCGAN(pl.LightningModule):
         # train generator
         if optimizer_idx == 0:
             # Sample noise as generator input
-            z = torch.tensor(np.random.normal(0, 1, (batch_size, self.latent_dim)))
+            z = torch.tensor(np.random.normal(0, 1, (batch_size, self.latent_dim))).float()
 
             # Generate a batch of images
             self.gen_imgs = self.forward(z)
@@ -161,7 +162,3 @@ class DCGAN(pl.LightningModule):
             # Logging to TensorBoard by default
             self.log("d_loss", d_loss)
             return d_loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer

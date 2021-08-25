@@ -20,13 +20,13 @@ def main():
     parser.add_argument("--b2", type=float, default=0.999, help="adam: decay of first order momentum of gradient")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument("--latent_dim", type=int, default=100, help="dimensionality of the latent space")
-    parser.add_argument("--img_size", type=int, default=32, help="size of each image dimension")
+    parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
     parser.add_argument("--channels", type=int, default=1, help="number of image channels")
     parser.add_argument("--sample_interval", type=int, default=400, help="interval between image sampling")
     opt = parser.parse_args()
     print(opt)
 
-    dataset = PixivDataset("./data")
+    dataset = PixivDataset("./data", size=opt.img_size)
 
     train_dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -35,7 +35,7 @@ def main():
     )
 
     # init model
-    gan = DCGAN()
+    gan = DCGAN(img_size=opt.img_size)
 
     # most basic trainer, uses good defaults (auto-tensorboard, checkpoints, logs, and more)
     # trainer = pl.Trainer(gpus=8) (if you have GPUs)

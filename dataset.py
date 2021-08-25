@@ -38,6 +38,8 @@ class PixivDataset(torch.utils.data.Dataset):
         #有的图像四通道，全部变三通道
         if img_tensor.shape[0] == 4:
             img_tensor = img_tensor[:3, :, :]
+        elif img_tensor.shape[0] == 2:
+            img_tensor = img_tensor[0, :, :].repeat(3, 1, 1)
         elif img_tensor.shape[0] == 1:
             img_tensor = img_tensor.repeat(3, 1, 1)
 
