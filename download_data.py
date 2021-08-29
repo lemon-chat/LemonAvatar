@@ -62,13 +62,13 @@ class PixivParser(object):
 class PixivSpider(object):
     def __init__(self, session=None) -> None:
         super().__init__()
-        # chrome_options = Options()
-        #chrome_options.add_argument("--disable-extensions")
-        #chrome_options.add_argument("--disable-gpu")
-        #chrome_options.add_argument("--no-sandbox") # linux only
-        # chrome_options.add_argument("--headless")
+        chrome_options = Options()
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox") # linux only
+        chrome_options.add_argument("--headless")
         # chrome_options.headless = True # also works
-        self.driver = webdriver.Chrome()
+        self.driver = webdriver.Chrome(executable_path='./chromedriver', options=chrome_options)
         self.driver.get("https://www.pixiv.net/")
         if session is not None:
             self.driver.add_cookie({

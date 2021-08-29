@@ -3,7 +3,10 @@ import argparse
 import os
 import numpy as np
 import math
+from numpy.lib.type_check import imag
+from torch._C import device
 
+import torchvision
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
 
@@ -122,12 +125,13 @@ class DCGAN(pl.LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         # training_step defined the train loop.
         # It is independent of forward
-        img = batch
+        img, _ = batch
+        device = img.device
         batch_size = img.shape[0]
 
         # Adversarial ground truths
-        valid = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False).fill_(1.0)
-        fake = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False).fill_(0.0)
+        valid = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False, device=device).fill_(1.0)
+        fake = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False, device=device).fill_(0.0)
 
         # Configure input
         real_imgs = batch
@@ -138,10 +142,15 @@ class DCGAN(pl.LightningModule):
         # train generator
         if optimizer_idx == 0:
             # Sample noise as generator input
-            z = torch.tensor(np.random.normal(0, 1, (batch_size, self.latent_dim))).float()
+            z = torch.tensor(np.random.normal(0, 1, (batch_size, self.latent_dim)), device=device).float()
 
             # Generate a batch of images
             self.gen_imgs = self.forward(z)
+
+            # log sampled images
+            sample_imgs = self.gen_imgs[:6]
+            grid = torchvision.utils.make_grid(sample_imgs)
+            self.logger.experiment.add_image('generated_images', grid, 0)
 
             # Loss measures generator's ability to fool the discriminator
             g_loss = self.adversarial_loss(self.discriminator(self.gen_imgs), valid)

@@ -18,7 +18,7 @@ class PixivDataset(torch.utils.data.Dataset):
             transforms.Resize(256),
             transforms.CenterCrop(256),
             transforms.ToTensor(),
-            # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            transforms.Normalize([0.5], [0.5]),
         ])
 
         self.files = list(glob.glob(os.path.join(dataset_path, "./**/*.jpg"), recursive=True))
@@ -43,7 +43,7 @@ class PixivDataset(torch.utils.data.Dataset):
         elif img_tensor.shape[0] == 1:
             img_tensor = img_tensor.repeat(3, 1, 1)
 
-        return img_tensor
+        return img_tensor, 0
 
     def __len__(self) -> int:
         return len(self.files)
