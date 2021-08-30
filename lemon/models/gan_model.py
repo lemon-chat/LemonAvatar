@@ -7,6 +7,8 @@ import pytorch_lightning as pl
 from collections import OrderedDict
 import torchvision
 
+from PIL import Image
+
 class Generator(nn.Module):
 
     def __init__(self, latent_dim, img_shape):
@@ -89,6 +91,8 @@ class GAN(pl.LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         imgs, _ = batch
 
+        batch_size = imgs.size(0)
+
         # sample noise
         z = torch.randn(imgs.shape[0], self.hparams.latent_dim)
         z = z.type_as(imgs)
@@ -106,7 +110,7 @@ class GAN(pl.LightningModule):
 
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
-            valid = torch.ones(imgs.size(0), 1)
+            valid = torch.ones(batch_size, 1)
             valid = valid.type_as(imgs)
 
             # adversarial loss is binary cross-entropy
@@ -123,13 +127,13 @@ class GAN(pl.LightningModule):
             # Measure discriminator's ability to classify real from generated samples
 
             # how well can it label as real?
-            valid = torch.ones(imgs.size(0), 1)
+            valid = torch.ones(batch_size, 1)
             valid = valid.type_as(imgs)
 
             real_loss = self.adversarial_loss(self.discriminator(imgs), valid)
 
             # how well can it label as fake?
-            fake = torch.zeros(imgs.size(0), 1)
+            fake = torch.zeros(batch_size, 1)
             fake = fake.type_as(imgs)
 
             fake_loss = self.adversarial_loss(self.discriminator(self(z).detach()), fake)
@@ -142,7 +146,16 @@ class GAN(pl.LightningModule):
             tqdm_dict = {'d_loss': d_loss}
             output = OrderedDict({'loss': d_loss, 'progress_bar': tqdm_dict, 'log': tqdm_dict})
             return output
+    def training_epoch_end(self, outputs):
+        device = self.device
+        z = torch.randn(8, self.hparams.latent_dim, requires_grad=False).to(device)
 
+        generated_imgs = self(z)
+        img_tensor = generated_imgs[0]
+        img = (255*img_tensor.permute(1, 2, 0)).detach().cpu().numpy().astype(np.uint8)
+        img = Image.fromarray(img, 'RGB')
+        img.save(f"images/{self.current_epoch}.jpg")
+        # img.show()
     def configure_optimizers(self):
         lr = self.hparams.lr
         b1 = self.hparams.b1

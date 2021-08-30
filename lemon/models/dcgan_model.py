@@ -3,7 +3,6 @@ import argparse
 import os
 import numpy as np
 import math
-from numpy.lib.type_check import imag
 from torch._C import device
 
 import torchvision
@@ -19,6 +18,7 @@ import torch.nn.functional as F
 import torch
 import pytorch_lightning as pl
 
+from PIL import Image
 
 class Generator(nn.Module):
     def __init__(self, img_size=256, latent_dim=100, channels=3):
@@ -94,16 +94,18 @@ def weights_init_normal(m):
 
 
 class DCGAN(pl.LightningModule):
-    def __init__(self, img_size:int=256):
+    def __init__(self, channels:int, img_size:int,
+            latent_dim: int = 100,
+            lr: float = 0.0002,
+            b1: float = 0.5,
+            b2: float = 0.999,
+            **kwargs):
         super().__init__()
-        self.img_size = img_size
-        self.lr = 0.0002
-        self.b1 = 0.5
-        self.b2 = 0.999
-        self.latent_dim = 100
+        self.save_hyperparameters()
+
         # Initialize generator and discriminator
-        self.generator = Generator(img_size=img_size)
-        self.discriminator = Discriminator(img_size=img_size)
+        self.generator = Generator(img_size=img_size, latent_dim=latent_dim, channels=channels)
+        self.discriminator = Discriminator(img_size=img_size, latent_dim=latent_dim, channels=channels)
         # Loss function
         self.adversarial_loss = torch.nn.BCELoss()
         
@@ -112,8 +114,8 @@ class DCGAN(pl.LightningModule):
         self.discriminator.apply(weights_init_normal)
     
     def configure_optimizers(self):
-        g_optim = torch.optim.Adam(self.generator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
-        d_optim = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(self.b1, self.b2))
+        g_optim = torch.optim.Adam(self.generator.parameters(), lr=self.hparams.lr, betas=(self.hparams.b1, self.hparams.b2))
+        d_optim = torch.optim.Adam(self.discriminator.parameters(), lr=self.hparams.lr, betas=(self.hparams.b1, self.hparams.b2))
         return (g_optim, d_optim)
             
 
@@ -134,7 +136,7 @@ class DCGAN(pl.LightningModule):
         fake = torch.zeros(batch_size, 1, dtype=torch.float, requires_grad=False, device=device).fill_(0.0)
 
         # Configure input
-        real_imgs = batch
+        real_imgs, _ = batch
 
         # -----------------
         #  Train Generator
@@ -142,7 +144,7 @@ class DCGAN(pl.LightningModule):
         # train generator
         if optimizer_idx == 0:
             # Sample noise as generator input
-            z = torch.tensor(np.random.normal(0, 1, (batch_size, self.latent_dim)), device=device).float()
+            z = torch.tensor(np.random.normal(0, 1, (batch_size, self.hparams.latent_dim)), device=device).float()
 
             # Generate a batch of images
             self.gen_imgs = self.forward(z)
@@ -150,7 +152,7 @@ class DCGAN(pl.LightningModule):
             # log sampled images
             sample_imgs = self.gen_imgs[:6]
             grid = torchvision.utils.make_grid(sample_imgs)
-            self.logger.experiment.add_image('generated_images', grid, 0)
+            self.logger.experiment.add_image('generated_images', grid, self.global_step)
 
             # Loss measures generator's ability to fool the discriminator
             g_loss = self.adversarial_loss(self.discriminator(self.gen_imgs), valid)
@@ -171,3 +173,14 @@ class DCGAN(pl.LightningModule):
             # Logging to TensorBoard by default
             self.log("d_loss", d_loss)
             return d_loss
+    
+    def training_epoch_end(self, outputs):
+        device = self.device
+        z = torch.randn(8, self.hparams.latent_dim, requires_grad=False).to(device)
+
+        generated_imgs = self(z)
+        img_tensor = generated_imgs[0]
+        img = (255*img_tensor.permute(1, 2, 0)).detach().cpu().numpy().astype(np.uint8)
+        img = Image.fromarray(img, 'RGB')
+        img.save(f"images/{self.current_epoch}.jpg")
+        # img.show()
